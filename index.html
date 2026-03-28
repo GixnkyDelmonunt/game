@@ -92,7 +92,6 @@
 
         .game-card:hover { border-color: #666; background: #1a1a1a; }
 
-        /* Game Icon */
         .game-icon {
             width: 60px;
             height: 60px;
@@ -102,17 +101,46 @@
             object-fit: cover;
         }
 
-        /* 3 Dots Menu */
-        .menu-dots {
+        /* 3 Dots Menu & Dropdown */
+        .menu-container {
             position: absolute;
             top: 20px;
             right: 20px;
+        }
+
+        .menu-dots {
             cursor: pointer;
             padding: 5px;
             color: var(--text-dim);
             transition: 0.2s;
+            border-radius: 50%;
         }
-        .menu-dots:hover { color: white; }
+        .menu-dots:hover { color: white; background: #222; }
+
+        .dropdown {
+            position: absolute;
+            right: 0;
+            top: 35px;
+            background: #1a1a1a;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            width: 140px;
+            display: none;
+            z-index: 10;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+
+        .dropdown.active { display: block; animation: show 0.2s; }
+
+        .dropdown-item {
+            padding: 12px 15px;
+            font-size: 0.8rem;
+            color: white;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .dropdown-item:hover { background: #252525; }
 
         .game-name { font-weight: 700; font-size: 1.1rem; margin-bottom: 5px; padding-right: 25px; }
         .game-desc { 
@@ -170,7 +198,7 @@
             <button id="searchBtn">SEARCH</button>
         </div>
 
-        <div id="loader" class="loader">Accessing API...</div>
+        <div id="loader" class="loader">Querying Roblox via Proxy...</div>
 
         <div id="results"></div>
     </div>
@@ -185,6 +213,13 @@
         searchBtn.addEventListener('click', startSearch);
         userInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') startSearch(); });
 
+        // Close dropdowns when clicking outside
+        window.onclick = (e) => {
+            if (!e.target.matches('.menu-dots') && !e.target.closest('.menu-dots')) {
+                document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('active'));
+            }
+        };
+
         async function startSearch() {
             const query = userInput.value.trim();
             if(!query) return;
@@ -197,7 +232,6 @@
             try {
                 let targetId = query;
 
-                // Handle Username vs ID
                 if (isNaN(query)) {
                     targetId = await fetchUserId(query);
                 }
@@ -215,28 +249,31 @@
         }
 
         async function fetchUserId(name) {
-            // Updated search logic
-            const res = await fetch(`https://users.roproxy.com/v1/users/search?keyword=${name}&limit=1`);
+            // Using the precise POST endpoint for username -> ID conversion
+            const res = await fetch(`https://users.roproxy.com/v1/usernames/users`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ usernames: [name], excludeBannedUsers: false })
+            });
             const data = await res.json();
 
             if (data.data && data.data.length > 0) {
                 return data.data[0].id;
             } else {
-                // Fallback attempt for exact match via profiles
-                throw new Error("User not found. Try the exact ID if the name isn't working.");
+                throw new Error("User not found. Check the spelling or use their User ID.");
             }
         }
 
-        async function fetchGames(id) {
-            const res = await fetch(`https://games.roproxy.com/v2/users/${id}/games?sortOrder=Asc&limit=50`);
-            if (!res.ok) throw new Error("Could not access games (Private profile or Proxy Error).");
+        async function fetchGames(userId) {
+            const res = await fetch(`https://games.roproxy.com/v2/users/${userId}/games?sortOrder=Asc&limit=50`);
+            if (!res.ok) throw new Error("Could not access games (Inventory might be private).");
             
             const data = await res.json();
             if (!data.data || data.data.length === 0) {
                 throw new Error("This user has no public games.");
             }
 
-            // Get all universe IDs to fetch icons in one go
+            // Fetch thumbnails
             const universeIds = data.data.map(g => g.id).join(',');
             const thumbRes = await fetch(`https://thumbnails.roproxy.com/v1/games/icons?universeIds=${universeIds}&returnPolicy=PlaceHolder&size=150x150&format=Png&isCircular=false`);
             const thumbData = await thumbRes.json();
@@ -244,30 +281,58 @@
             data.data.forEach((game, i) => {
                 const iconObj = thumbData.data?.find(t => t.targetId === game.id);
                 const iconUrl = iconObj ? iconObj.imageUrl : '';
+                
+                // Roblox v2 API uses .id for UniverseId and .rootPlaceId for the specific Place ID
+                // We ensure it's not undefined
+                const placeId = game.rootPlaceId || game.id;
 
                 const card = document.createElement('div');
                 card.className = 'game-card';
                 card.style.animationDelay = `${i * 0.05}s`;
                 card.innerHTML = `
-                    <div class="menu-dots" onclick="copyId('${game.rootPlaceId}')">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
+                    <div class="menu-container">
+                        <div class="menu-dots" onclick="toggleMenu(event, ${i})">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
+                        </div>
+                        <div class="dropdown" id="drop-${i}">
+                            <div class="dropdown-item" onclick="copyId('${placeId}')">Copy Place ID</div>
+                            <div class="dropdown-item" onclick="window.open('https://www.roblox.com/games/${placeId}', '_blank')">Open Link</div>
+                        </div>
                     </div>
                     <img class="game-icon" src="${iconUrl}" alt="icon">
                     <div class="game-name">${game.name}</div>
-                    <div class="game-desc">${game.description || 'No description.'}</div>
+                    <div class="game-desc">${game.description || 'No description provided.'}</div>
                     <div class="badge-row">
                         <div class="badge">Active: ${game.playing || 0}</div>
                         <div class="badge">⭐ ${game.favoritedCount || 0}</div>
                     </div>
-                    <a href="https://www.roblox.com/games/${game.rootPlaceId}" target="_blank" class="go-btn">View Website</a>
+                    <a href="https://www.roblox.com/games/${placeId}" target="_blank" class="go-btn">View Website</a>
                 `;
                 resultsContainer.appendChild(card);
             });
         }
 
+        function toggleMenu(event, index) {
+            event.stopPropagation();
+            document.querySelectorAll('.dropdown').forEach((d, i) => {
+                if(i !== index) d.classList.remove('active');
+            });
+            document.getElementById(`drop-${index}`).classList.toggle('active');
+        }
+
         function copyId(id) {
-            navigator.clipboard.writeText(id);
-            alert("Place ID copied to clipboard: " + id);
+            navigator.clipboard.writeText(id).then(() => {
+                alert("Place ID " + id + " copied to clipboard!");
+            }).catch(() => {
+                // Fallback for older browsers
+                const el = document.createElement('textarea');
+                el.value = id;
+                document.body.appendChild(el);
+                el.select();
+                document.execCommand('copy');
+                document.body.removeChild(el);
+                alert("Place ID " + id + " copied!");
+            });
         }
     </script>
 </body>
