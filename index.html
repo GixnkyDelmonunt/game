@@ -101,7 +101,6 @@
             object-fit: cover;
         }
 
-        /* 3 Dots Menu & Dropdown */
         .menu-container {
             position: absolute;
             top: 20px;
@@ -131,7 +130,7 @@
             box-shadow: 0 10px 25px rgba(0,0,0,0.5);
         }
 
-        .dropdown.active { display: block; animation: show 0.2s; }
+        .dropdown.active { display: block; }
 
         .dropdown-item {
             padding: 12px 15px;
@@ -180,7 +179,6 @@
 
         .loader { display: none; text-align: center; color: var(--text-dim); padding: 20px; font-style: italic; }
         .error-msg { display: none; color: #ff5555; text-align: center; background: #201010; padding: 15px; border-radius: 12px; border: 1px solid #402020; margin-bottom: 20px; }
-
     </style>
 </head>
 <body>
@@ -188,17 +186,17 @@
     <div class="container">
         <header>
             <h1>ARCHIVE</h1>
-            <p>Enter a Roblox username or ID to fetch experiences</p>
+            <p>Enter a Roblox Player ID to fetch their games</p>
         </header>
 
         <div id="error" class="error-msg"></div>
 
         <div class="search-area">
-            <input type="text" id="userInput" placeholder="Search Roblox User..." spellcheck="false">
-            <button id="searchBtn">SEARCH</button>
+            <input type="text" id="userInput" placeholder="Enter Player ID (e.g. 1)" spellcheck="false">
+            <button id="searchBtn">FETCH</button>
         </div>
 
-        <div id="loader" class="loader">Querying Roblox via Proxy...</div>
+        <div id="loader" class="loader">Querying Roblox API...</div>
 
         <div id="results"></div>
     </div>
@@ -213,7 +211,6 @@
         searchBtn.addEventListener('click', startSearch);
         userInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') startSearch(); });
 
-        // Close dropdowns when clicking outside
         window.onclick = (e) => {
             if (!e.target.matches('.menu-dots') && !e.target.closest('.menu-dots')) {
                 document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('active'));
@@ -222,7 +219,10 @@
 
         async function startSearch() {
             const query = userInput.value.trim();
-            if(!query) return;
+            if(!query || isNaN(query)) {
+                showError("Please enter a valid numeric Player ID.");
+                return;
+            }
 
             resultsContainer.innerHTML = '';
             errorEl.style.display = 'none';
@@ -230,50 +230,22 @@
             searchBtn.disabled = true;
 
             try {
-                let targetId = query;
-
-                if (isNaN(query)) {
-                    targetId = await fetchUserId(query);
-                }
-
-                await fetchGames(targetId);
-
+                await fetchGames(query);
             } catch (err) {
-                console.error(err);
-                errorEl.textContent = err.message;
-                errorEl.style.display = 'block';
+                showError(err.message);
             } finally {
                 loader.style.display = 'none';
                 searchBtn.disabled = false;
             }
         }
 
-        async function fetchUserId(name) {
-            // Using the precise POST endpoint for username -> ID conversion
-            const res = await fetch(`https://users.roproxy.com/v1/usernames/users`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ usernames: [name], excludeBannedUsers: false })
-            });
-            const data = await res.json();
-
-            if (data.data && data.data.length > 0) {
-                return data.data[0].id;
-            } else {
-                throw new Error("User not found. Check the spelling or use their User ID.");
-            }
-        }
-
         async function fetchGames(userId) {
             const res = await fetch(`https://games.roproxy.com/v2/users/${userId}/games?sortOrder=Asc&limit=50`);
-            if (!res.ok) throw new Error("Could not access games (Inventory might be private).");
+            if (!res.ok) throw new Error("Could not fetch games. Profile may be private.");
             
             const data = await res.json();
-            if (!data.data || data.data.length === 0) {
-                throw new Error("This user has no public games.");
-            }
+            if (!data.data || data.data.length === 0) throw new Error("No public games found for this ID.");
 
-            // Fetch thumbnails
             const universeIds = data.data.map(g => g.id).join(',');
             const thumbRes = await fetch(`https://thumbnails.roproxy.com/v1/games/icons?universeIds=${universeIds}&returnPolicy=PlaceHolder&size=150x150&format=Png&isCircular=false`);
             const thumbData = await thumbRes.json();
@@ -282,9 +254,8 @@
                 const iconObj = thumbData.data?.find(t => t.targetId === game.id);
                 const iconUrl = iconObj ? iconObj.imageUrl : '';
                 
-                // Roblox v2 API uses .id for UniverseId and .rootPlaceId for the specific Place ID
-                // We ensure it's not undefined
-                const placeId = game.rootPlaceId || game.id;
+                // IMPORTANT: Roblox website uses rootPlaceId for game links, not the universe ID (id)
+                const realPlaceId = game.rootPlaceId;
 
                 const card = document.createElement('div');
                 card.className = 'game-card';
@@ -295,8 +266,8 @@
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
                         </div>
                         <div class="dropdown" id="drop-${i}">
-                            <div class="dropdown-item" onclick="copyId('${placeId}')">Copy Place ID</div>
-                            <div class="dropdown-item" onclick="window.open('https://www.roblox.com/games/${placeId}', '_blank')">Open Link</div>
+                            <div class="dropdown-item" onclick="copyId('${realPlaceId}')">Copy Place ID</div>
+                            <div class="dropdown-item" onclick="window.open('https://www.roblox.com/games/${realPlaceId}', '_blank')">Open Website</div>
                         </div>
                     </div>
                     <img class="game-icon" src="${iconUrl}" alt="icon">
@@ -306,7 +277,7 @@
                         <div class="badge">Active: ${game.playing || 0}</div>
                         <div class="badge">⭐ ${game.favoritedCount || 0}</div>
                     </div>
-                    <a href="https://www.roblox.com/games/${placeId}" target="_blank" class="go-btn">View Website</a>
+                    <a href="https://www.roblox.com/games/${realPlaceId}" target="_blank" class="go-btn">Visit Website</a>
                 `;
                 resultsContainer.appendChild(card);
             });
@@ -314,25 +285,21 @@
 
         function toggleMenu(event, index) {
             event.stopPropagation();
-            document.querySelectorAll('.dropdown').forEach((d, i) => {
-                if(i !== index) d.classList.remove('active');
-            });
-            document.getElementById(`drop-${index}`).classList.toggle('active');
+            const target = document.getElementById(`drop-${index}`);
+            const isActive = target.classList.contains('active');
+            document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('active'));
+            if (!isActive) target.classList.add('active');
         }
 
         function copyId(id) {
             navigator.clipboard.writeText(id).then(() => {
-                alert("Place ID " + id + " copied to clipboard!");
-            }).catch(() => {
-                // Fallback for older browsers
-                const el = document.createElement('textarea');
-                el.value = id;
-                document.body.appendChild(el);
-                el.select();
-                document.execCommand('copy');
-                document.body.removeChild(el);
-                alert("Place ID " + id + " copied!");
+                alert("Place ID copied: " + id);
             });
+        }
+
+        function showError(msg) {
+            errorEl.textContent = msg;
+            errorEl.style.display = 'block';
         }
     </script>
 </body>
