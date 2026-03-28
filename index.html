@@ -5,23 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Player Game Viewer</title>
     <style>
-        /* --- CSS STYLES --- */
         :root {
-            --bg: #0f0f0f;
-            --card-bg: #1a1a1a;
-            --border: #333;
+            --bg: #0a0a0a;
+            --card-bg: #141414;
+            --border: #252525;
             --text-main: #ffffff;
-            --text-dim: #a0a0a0;
+            --text-dim: #888888;
             --accent: #ffffff;
-            --transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
 
         body {
             background-color: var(--bg);
@@ -30,61 +24,26 @@
             flex-direction: column;
             align-items: center;
             min-height: 100vh;
-            padding: 40px 20px;
-            overflow-x: hidden;
+            padding: 60px 20px;
         }
 
-        /* Animations */
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        .container { width: 100%; max-width: 900px; }
 
-        @keyframes pulse {
-            0% { opacity: 0.5; }
-            50% { opacity: 1; }
-            100% { opacity: 0.5; }
-        }
+        header { text-align: center; margin-bottom: 40px; }
+        header h1 { font-size: 2.5rem; letter-spacing: -2px; margin-bottom: 8px; font-weight: 800; }
+        header p { color: var(--text-dim); }
 
-        .container {
-            width: 100%;
-            max-width: 800px;
-            animation: fadeInUp 0.8s ease-out;
-        }
-
-        header {
-            text-align: center;
-            margin-bottom: 50px;
-        }
-
-        header h1 {
-            font-size: 2.5rem;
-            font-weight: 700;
-            letter-spacing: -1px;
-            margin-bottom: 10px;
-        }
-
-        header p {
-            color: var(--text-dim);
-            font-size: 1rem;
-        }
-
-        /* Search Area */
-        .search-box {
+        .search-area {
             display: flex;
-            gap: 10px;
             background: var(--card-bg);
-            padding: 8px;
-            border-radius: 16px;
+            padding: 10px;
+            border-radius: 20px;
             border: 1px solid var(--border);
+            margin-bottom: 50px;
             transition: var(--transition);
-            margin-bottom: 40px;
         }
 
-        .search-box:focus-within {
-            border-color: var(--accent);
-            box-shadow: 0 0 20px rgba(255,255,255,0.05);
-        }
+        .search-area:focus-within { border-color: #555; transform: translateY(-2px); }
 
         input {
             flex: 1;
@@ -92,103 +51,58 @@
             border: none;
             outline: none;
             color: white;
-            padding: 12px 15px;
-            font-size: 1rem;
+            padding: 15px 20px;
+            font-size: 1.1rem;
         }
 
         button {
             background: var(--accent);
             color: black;
             border: none;
-            padding: 12px 25px;
-            border-radius: 12px;
-            font-weight: 600;
+            padding: 0 30px;
+            border-radius: 14px;
+            font-weight: 700;
             cursor: pointer;
             transition: var(--transition);
         }
 
-        button:hover {
-            opacity: 0.9;
-            transform: scale(0.98);
-        }
+        button:hover { opacity: 0.8; }
 
-        button:disabled {
-            background: #444;
-            cursor: not-allowed;
-        }
-
-        /* Results Grid */
         #results {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
             gap: 20px;
-            width: 100%;
         }
 
         .game-card {
             background: var(--card-bg);
-            border-radius: 20px;
             border: 1px solid var(--border);
-            padding: 20px;
+            border-radius: 24px;
+            padding: 24px;
             transition: var(--transition);
-            animation: fadeInUp 0.5s ease-out forwards;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: show 0.5s forwards;
         }
 
-        .game-card:hover {
-            border-color: #555;
-            transform: translateY(-5px);
+        @keyframes show { to { opacity: 1; transform: translateY(0); } }
+
+        .game-card:hover { border-color: #666; background: #1a1a1a; }
+
+        .game-name { font-weight: 700; font-size: 1.2rem; margin-bottom: 5px; }
+        .game-desc { font-size: 0.85rem; color: var(--text-dim); line-height: 1.4; margin-bottom: 15px; }
+        
+        .badge {
             background: #222;
-        }
-
-        .game-title {
-            font-weight: 600;
-            font-size: 1.1rem;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .game-stats {
-            display: flex;
-            gap: 15px;
-            font-size: 0.85rem;
-            color: var(--text-dim);
-        }
-
-        .status-tag {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 20px;
-            background: #333;
+            padding: 5px 12px;
+            border-radius: 10px;
             font-size: 0.75rem;
-            width: fit-content;
+            color: #ccc;
+            display: inline-block;
         }
 
-        /* Feedback UI */
-        .loader {
-            display: none;
-            text-align: center;
-            padding: 40px;
-            font-weight: 500;
-            color: var(--text-dim);
-            animation: pulse 1.5s infinite;
-        }
-
-        .error {
-            color: #ff4444;
-            text-align: center;
-            margin-top: 20px;
-            display: none;
-        }
-
-        /* Scrollbar */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: var(--bg); }
-        ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #444; }
+        .loader { display: none; text-align: center; color: var(--text-dim); padding: 20px; font-style: italic; }
+        .error-msg { display: none; color: #ff5555; text-align: center; background: #201010; padding: 15px; border-radius: 12px; border: 1px solid #402020; margin-bottom: 20px; }
 
     </style>
 </head>
@@ -196,114 +110,99 @@
 
     <div class="container">
         <header>
-            <h1>Discovery</h1>
-            <p>Enter a Roblox Username or ID to view their games</p>
+            <h1>ARCHIVE</h1>
+            <p>Enter a Roblox username or ID to fetch experiences</p>
         </header>
 
-        <div class="search-box">
-            <input type="text" id="userInput" placeholder="Search username or ID..." autocomplete="off">
-            <button id="searchBtn">Search</button>
+        <div id="error" class="error-msg"></div>
+
+        <div class="search-area">
+            <input type="text" id="userInput" placeholder="Search Roblox User..." spellcheck="false">
+            <button id="searchBtn">SEARCH</button>
         </div>
 
-        <div id="loader" class="loader">Fetching data from the cloud...</div>
-        <div id="error" class="error"></div>
+        <div id="loader" class="loader">Querying databases...</div>
 
-        <div id="results">
-            <!-- Game cards will appear here -->
-        </div>
+        <div id="results"></div>
     </div>
 
     <script>
-        /* --- JAVASCRIPT LOGIC --- */
-
         const searchBtn = document.getElementById('searchBtn');
         const userInput = document.getElementById('userInput');
         const resultsContainer = document.getElementById('results');
         const loader = document.getElementById('loader');
         const errorEl = document.getElementById('error');
 
-        searchBtn.addEventListener('click', handleSearch);
-        userInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') handleSearch();
-        });
+        searchBtn.addEventListener('click', startSearch);
+        userInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') startSearch(); });
 
-        async function handleSearch() {
+        async function startSearch() {
             const query = userInput.value.trim();
-            if (!query) return;
+            if(!query) return;
 
-            // Reset UI
+            // Reset
             resultsContainer.innerHTML = '';
             errorEl.style.display = 'none';
             loader.style.display = 'block';
             searchBtn.disabled = true;
 
             try {
-                let userId = query;
+                let targetId = query;
 
-                // If input is not a pure number, it's a username
+                // If input is text, we search for the ID
                 if (isNaN(query)) {
-                    userId = await getUserIdFromName(query);
+                    console.log(`Resolving username: ${query}`);
+                    targetId = await fetchUserId(query);
                 }
 
-                await fetchGames(userId);
+                console.log(`Fetching games for ID: ${targetId}`);
+                await fetchGames(targetId);
+
             } catch (err) {
-                showError(err.message);
+                console.error(err);
+                errorEl.textContent = err.message;
+                errorEl.style.display = 'block';
             } finally {
                 loader.style.display = 'none';
                 searchBtn.disabled = false;
             }
         }
 
-        async function getUserIdFromName(username) {
-            try {
-                const response = await fetch(`https://users.roproxy.com/v1/usernames/users`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ usernames: [username], excludeBannedUsers: true })
-                });
-                const data = await response.json();
-                
-                if (data.data && data.data.length > 0) {
-                    return data.data[0].id;
-                } else {
-                    throw new Error("User not found");
-                }
-            } catch (e) {
-                throw new Error("Could not resolve username. (Check spelling or proxy status)");
+        async function fetchUserId(name) {
+            // Using the Search GET endpoint (more browser friendly)
+            const res = await fetch(`https://users.roproxy.com/v1/users/search?keyword=${name}&limit=1`);
+            const data = await res.json();
+
+            if (data.data && data.data.length > 0) {
+                return data.data[0].id;
+            } else {
+                throw new Error("User not found. Try the exact Username or ID.");
             }
         }
 
         async function fetchGames(id) {
-            const response = await fetch(`https://games.roproxy.com/v2/users/${id}/games?sortOrder=Asc&limit=50`);
+            const res = await fetch(`https://games.roproxy.com/v2/users/${id}/games?sortOrder=Asc&limit=50`);
             
-            if (!response.ok) throw new Error("Could not fetch games for this ID.");
+            if (!res.ok) throw new Error("Could not access games (Proxy Error or Private profile).");
             
-            const data = await response.json();
+            const data = await res.json();
             
             if (!data.data || data.data.length === 0) {
-                showError("No public games found for this user.");
-                return;
+                throw new Error("This user has no public games listed.");
             }
 
-            renderGames(data.data);
-        }
-
-        function renderGames(games) {
-            resultsContainer.innerHTML = games.map((game, index) => `
-                <div class="game-card" style="animation-delay: ${index * 0.05}s">
-                    <div class="game-title">${game.name}</div>
-                    <div class="status-tag">${game.creator.name}</div>
-                    <div class="game-stats">
-                        <span>👍 ${game.totalUpVotes || 0}</span>
-                        <span>👥 ${game.playing || 0} active</span>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function showError(msg) {
-            errorEl.textContent = msg;
-            errorEl.style.display = 'block';
+            data.data.forEach((game, i) => {
+                const card = document.createElement('div');
+                card.className = 'game-card';
+                card.style.animationDelay = `${i * 0.05}s`;
+                card.innerHTML = `
+                    <div class="game-name">${game.name}</div>
+                    <div class="game-desc">${game.description || 'No description provided.'}</div>
+                    <div class="badge">Active: ${game.playing || 0}</div>
+                    <div class="badge">⭐ ${game.favoritedCount || 0}</div>
+                `;
+                resultsContainer.appendChild(card);
+            });
         }
     </script>
 </body>
