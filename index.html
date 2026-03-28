@@ -3,304 +3,230 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Player Game Viewer</title>
+    <title>Roblox Game Explorer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg: #0a0a0a;
-            --card-bg: #141414;
-            --border: #252525;
-            --text-main: #ffffff;
-            --text-dim: #888888;
-            --accent: #ffffff;
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --bg: #0b0e14;
+            --card-bg: #161b22;
+            --accent: #0084ff;
+            --text: #ffffff;
+            --text-dim: #8b949e;
+            --border: #30363d;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
 
         body {
             background-color: var(--bg);
-            color: var(--text-main);
+            color: var(--text);
+            padding: 40px 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            min-height: 100vh;
-            padding: 60px 20px;
         }
 
-        .container { width: 100%; max-width: 900px; }
+        .header { text-align: center; margin-bottom: 40px; }
+        .header h1 { font-size: 2.5rem; font-weight: 700; margin-bottom: 10px; }
+        .header p { color: var(--text-dim); }
 
-        header { text-align: center; margin-bottom: 40px; }
-        header h1 { font-size: 2.5rem; letter-spacing: -2px; margin-bottom: 8px; font-weight: 800; }
-        header p { color: var(--text-dim); }
-
-        .search-area {
+        .search-container {
+            width: 100%;
+            max-width: 500px;
             display: flex;
-            background: var(--card-bg);
-            padding: 10px;
-            border-radius: 20px;
-            border: 1px solid var(--border);
-            margin-bottom: 50px;
-            transition: var(--transition);
+            gap: 10px;
+            margin-bottom: 40px;
         }
-
-        .search-area:focus-within { border-color: #555; transform: translateY(-2px); }
 
         input {
             flex: 1;
-            background: transparent;
-            border: none;
-            outline: none;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            padding: 12px 16px;
+            border-radius: 8px;
             color: white;
-            padding: 15px 20px;
-            font-size: 1.1rem;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
         }
+
+        input:focus { border-color: var(--accent); }
 
         button {
             background: var(--accent);
-            color: black;
+            color: white;
             border: none;
-            padding: 0 30px;
-            border-radius: 14px;
-            font-weight: 700;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
             cursor: pointer;
-            transition: var(--transition);
+            transition: opacity 0.2s;
         }
 
-        button:hover { opacity: 0.8; }
+        button:hover { opacity: 0.9; }
+        button:disabled { background: #444; cursor: not-allowed; }
 
-        #results {
+        .error { color: #ff4d4d; margin-bottom: 20px; display: none; }
+
+        .loader {
+            display: none;
+            width: 40px;
+            height: 40px;
+            border: 3px solid #30363d;
+            border-radius: 50%;
+            border-top-color: var(--accent);
+            animation: spin 1s linear infinite;
+            margin: 20px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .games-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
             gap: 20px;
+            width: 100%;
+            max-width: 1100px;
         }
 
         .game-card {
             background: var(--card-bg);
             border: 1px solid var(--border);
-            border-radius: 24px;
-            padding: 20px;
-            transition: var(--transition);
-            opacity: 0;
-            transform: translateY(20px);
-            animation: show 0.5s forwards;
-            position: relative;
-            display: flex;
-            flex-direction: column;
+            border-radius: 12px;
+            overflow: hidden;
+            transition: transform 0.2s;
         }
 
-        @keyframes show { to { opacity: 1; transform: translateY(0); } }
+        .game-card:hover { transform: translateY(-5px); }
 
-        .game-card:hover { border-color: #666; background: #1a1a1a; }
-
-        .game-icon {
-            width: 60px;
-            height: 60px;
-            border-radius: 15px;
-            background: #222;
-            margin-bottom: 15px;
+        .thumbnail {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #000;
             object-fit: cover;
         }
 
-        .menu-container {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-        }
-
-        .menu-dots {
-            cursor: pointer;
-            padding: 5px;
-            color: var(--text-dim);
-            transition: 0.2s;
-            border-radius: 50%;
-        }
-        .menu-dots:hover { color: white; background: #222; }
-
-        .dropdown {
-            position: absolute;
-            right: 0;
-            top: 35px;
-            background: #1a1a1a;
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            width: 140px;
-            display: none;
-            z-index: 10;
-            overflow: hidden;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-        }
-
-        .dropdown.active { display: block; }
-
-        .dropdown-item {
-            padding: 12px 15px;
-            font-size: 0.8rem;
-            color: white;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-        .dropdown-item:hover { background: #252525; }
-
-        .game-name { font-weight: 700; font-size: 1.1rem; margin-bottom: 5px; padding-right: 25px; }
-        .game-desc { 
-            font-size: 0.85rem; 
-            color: var(--text-dim); 
-            line-height: 1.4; 
-            margin-bottom: 15px;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
+        .game-info { padding: 16px; }
+        .game-name { font-weight: 700; font-size: 1.1rem; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .game-stats { font-size: 0.85rem; color: var(--text-dim); display: flex; gap: 15px; }
         
-        .badge-row { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
-        .badge {
-            background: #222;
-            padding: 5px 12px;
-            border-radius: 10px;
-            font-size: 0.75rem;
-            color: #ccc;
-        }
-
-        .go-btn {
-            background: transparent;
-            border: 1px solid #333;
-            color: white;
-            padding: 10px;
-            width: 100%;
-            border-radius: 12px;
-            font-size: 0.85rem;
+        .play-link {
+            display: inline-block;
+            margin-top: 15px;
+            color: var(--accent);
             text-decoration: none;
-            text-align: center;
-            margin-top: auto;
-            transition: 0.2s;
+            font-size: 0.9rem;
+            font-weight: 600;
         }
-        .go-btn:hover { background: white; color: black; }
 
-        .loader { display: none; text-align: center; color: var(--text-dim); padding: 20px; font-style: italic; }
-        .error-msg { display: none; color: #ff5555; text-align: center; background: #201010; padding: 15px; border-radius: 12px; border: 1px solid #402020; margin-bottom: 20px; }
+        .play-link:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <header>
-            <h1>ARCHIVE</h1>
-            <p>Enter a Roblox Player ID to fetch their games</p>
-        </header>
-
-        <div id="error" class="error-msg"></div>
-
-        <div class="search-area">
-            <input type="text" id="userInput" placeholder="Enter Player ID (e.g. 1)" spellcheck="false">
-            <button id="searchBtn">FETCH</button>
-        </div>
-
-        <div id="loader" class="loader">Querying Roblox API...</div>
-
-        <div id="results"></div>
+    <div class="header">
+        <h1>Player Game Finder</h1>
+        <p>Enter a Roblox Username or User ID</p>
     </div>
 
+    <div class="search-container">
+        <input type="text" id="userInput" placeholder="e.g. Builderman or 156" spellcheck="false">
+        <button id="searchBtn" onclick="handleSearch()">Search</button>
+    </div>
+
+    <div id="errorBox" class="error"></div>
+    <div id="loader" class="loader"></div>
+    <div id="gamesGrid" class="games-grid"></div>
+
     <script>
-        const searchBtn = document.getElementById('searchBtn');
         const userInput = document.getElementById('userInput');
-        const resultsContainer = document.getElementById('results');
+        const searchBtn = document.getElementById('searchBtn');
+        const gamesGrid = document.getElementById('gamesGrid');
+        const errorBox = document.getElementById('errorBox');
         const loader = document.getElementById('loader');
-        const errorEl = document.getElementById('error');
 
-        searchBtn.addEventListener('click', startSearch);
-        userInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') startSearch(); });
-
-        window.onclick = (e) => {
-            if (!e.target.matches('.menu-dots') && !e.target.closest('.menu-dots')) {
-                document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('active'));
-            }
-        };
-
-        async function startSearch() {
+        async function handleSearch() {
             const query = userInput.value.trim();
-            if(!query || isNaN(query)) {
-                showError("Please enter a valid numeric Player ID.");
-                return;
-            }
+            if (!query) return;
 
-            resultsContainer.innerHTML = '';
-            errorEl.style.display = 'none';
+            // Reset UI
+            gamesGrid.innerHTML = '';
+            errorBox.style.display = 'none';
             loader.style.display = 'block';
             searchBtn.disabled = true;
 
             try {
-                await fetchGames(query);
+                let userId = query;
+
+                // If input contains letters, it's a username. We need to find the ID.
+                if (isNaN(query)) {
+                    // Using Search API (GET) which is better for RoProxy CORS than the POST Usernames API
+                    const searchUrl = `https://users.roproxy.com/v1/users/search?keyword=${encodeURIComponent(query)}&limit=1`;
+                    const userRes = await fetch(searchUrl);
+                    const userData = await userRes.json();
+
+                    if (!userData.data || userData.data.length === 0) {
+                        throw new Error("User not found.");
+                    }
+                    userId = userData.data[0].id;
+                }
+
+                // Fetch Games
+                const gamesUrl = `https://games.roproxy.com/v2/users/${userId}/games?sortOrder=Asc&limit=50`;
+                const gamesRes = await fetch(gamesUrl);
+                const gamesData = await gamesRes.json();
+
+                if (!gamesData.data || gamesData.data.length === 0) {
+                    throw new Error("This user has no public games.");
+                }
+
+                renderGames(gamesData.data);
+
             } catch (err) {
-                showError(err.message);
+                errorBox.innerText = err.message;
+                errorBox.style.display = 'block';
             } finally {
                 loader.style.display = 'none';
                 searchBtn.disabled = false;
             }
         }
 
-        async function fetchGames(userId) {
-            const res = await fetch(`https://games.roproxy.com/v2/users/${userId}/games?sortOrder=Asc&limit=50`);
-            if (!res.ok) throw new Error("Could not fetch games. Profile may be private.");
+        async function renderGames(games) {
+            // Get thumbnails in a batch for better performance
+            const universeIds = games.map(g => g.id).join(',');
+            let thumbs = {};
             
-            const data = await res.json();
-            if (!data.data || data.data.length === 0) throw new Error("No public games found for this ID.");
+            try {
+                const thumbRes = await fetch(`https://thumbnails.roproxy.com/v1/games/icons?universeIds=${universeIds}&size=150x150&format=Png&isCircular=false`);
+                const thumbData = await thumbRes.json();
+                thumbData.data.forEach(t => thumbs[t.targetId] = t.imageUrl);
+            } catch (e) { console.log("Thumbnail fetch failed"); }
 
-            const universeIds = data.data.map(g => g.id).join(',');
-            const thumbRes = await fetch(`https://thumbnails.roproxy.com/v1/games/icons?universeIds=${universeIds}&returnPolicy=PlaceHolder&size=150x150&format=Png&isCircular=false`);
-            const thumbData = await thumbRes.json();
-            
-            data.data.forEach((game, i) => {
-                const iconObj = thumbData.data?.find(t => t.targetId === game.id);
-                const iconUrl = iconObj ? iconObj.imageUrl : '';
-                
-                // IMPORTANT: Roblox website uses rootPlaceId for game links, not the universe ID (id)
-                const realPlaceId = game.rootPlaceId;
-
+            games.forEach(game => {
                 const card = document.createElement('div');
                 card.className = 'game-card';
-                card.style.animationDelay = `${i * 0.05}s`;
+                
+                const thumbImg = thumbs[game.id] || 'https://tr.rbxcdn.com/53ebcb10178495a43064e43f32617f65/150/150/Image/Png';
+
                 card.innerHTML = `
-                    <div class="menu-container">
-                        <div class="menu-dots" onclick="toggleMenu(event, ${i})">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
+                    <img src="${thumbImg}" class="thumbnail" alt="Game Icon">
+                    <div class="game-info">
+                        <div class="game-name">${game.name}</div>
+                        <div class="game-stats">
+                            <span>👍 ${game.totalUpVotes || 0}</span>
+                            <span>👥 ${game.placeVisits.toLocaleString()} visits</span>
                         </div>
-                        <div class="dropdown" id="drop-${i}">
-                            <div class="dropdown-item" onclick="copyId('${realPlaceId}')">Copy Place ID</div>
-                            <div class="dropdown-item" onclick="window.open('https://www.roblox.com/games/${realPlaceId}', '_blank')">Open Website</div>
-                        </div>
+                        <a href="https://www.roblox.com/games/${game.rootPlace.id}" target="_blank" class="play-link">View Game →</a>
                     </div>
-                    <img class="game-icon" src="${iconUrl}" alt="icon">
-                    <div class="game-name">${game.name}</div>
-                    <div class="game-desc">${game.description || 'No description provided.'}</div>
-                    <div class="badge-row">
-                        <div class="badge">Active: ${game.playing || 0}</div>
-                        <div class="badge">⭐ ${game.favoritedCount || 0}</div>
-                    </div>
-                    <a href="https://www.roblox.com/games/${realPlaceId}" target="_blank" class="go-btn">Visit Website</a>
                 `;
-                resultsContainer.appendChild(card);
+                gamesGrid.appendChild(card);
             });
         }
 
-        function toggleMenu(event, index) {
-            event.stopPropagation();
-            const target = document.getElementById(`drop-${index}`);
-            const isActive = target.classList.contains('active');
-            document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('active'));
-            if (!isActive) target.classList.add('active');
-        }
-
-        function copyId(id) {
-            navigator.clipboard.writeText(id).then(() => {
-                alert("Place ID copied: " + id);
-            });
-        }
-
-        function showError(msg) {
-            errorEl.textContent = msg;
-            errorEl.style.display = 'block';
-        }
+        // Listen for Enter key
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleSearch();
+        });
     </script>
 </body>
 </html>
