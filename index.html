@@ -3,229 +3,210 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roblox Game Explorer</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <title>Roblox Game Finder</title>
     <style>
         :root {
-            --bg: #0b0e14;
-            --card-bg: #161b22;
-            --accent: #0084ff;
-            --text: #ffffff;
-            --text-dim: #8b949e;
-            --border: #30363d;
+            --bg: #0f172a;
+            --card: #1e293b;
+            --accent: #3b82f6;
+            --text: #f8fafc;
+            --text-dim: #94a3b8;
+            --error: #f43f5e;
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
 
         body {
             background-color: var(--bg);
             color: var(--text);
-            padding: 40px 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
+            min-height: 100vh;
+            padding: 40px 20px;
         }
 
-        .header { text-align: center; margin-bottom: 40px; }
-        .header h1 { font-size: 2.5rem; font-weight: 700; margin-bottom: 10px; }
-        .header p { color: var(--text-dim); }
+        .container { width: 100%; max-width: 900px; text-align: center; }
 
-        .search-container {
-            width: 100%;
-            max-width: 500px;
+        h1 { font-size: 2.5rem; margin-bottom: 10px; font-weight: 800; letter-spacing: -1px; }
+        p { color: var(--text-dim); margin-bottom: 30px; }
+
+        .search-bar {
             display: flex;
             gap: 10px;
-            margin-bottom: 40px;
+            background: var(--card);
+            padding: 8px;
+            border-radius: 12px;
+            border: 1px solid #334155;
+            margin-bottom: 20px;
         }
 
         input {
             flex: 1;
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            padding: 12px 16px;
-            border-radius: 8px;
+            background: transparent;
+            border: none;
             color: white;
+            padding: 10px 15px;
             font-size: 1rem;
             outline: none;
-            transition: border-color 0.2s;
         }
-
-        input:focus { border-color: var(--accent); }
 
         button {
             background: var(--accent);
             color: white;
             border: none;
-            padding: 12px 24px;
+            padding: 10px 25px;
             border-radius: 8px;
             font-weight: 600;
             cursor: pointer;
-            transition: opacity 0.2s;
+            transition: 0.2s;
         }
 
-        button:hover { opacity: 0.9; }
-        button:disabled { background: #444; cursor: not-allowed; }
+        button:hover { background: #2563eb; }
+        button:disabled { background: #475569; cursor: not-allowed; }
 
-        .error { color: #ff4d4d; margin-bottom: 20px; display: none; }
+        #status { margin-bottom: 20px; font-size: 0.9rem; font-weight: 600; }
+        .error { color: var(--error); }
+        .loading { color: var(--accent); }
 
-        .loader {
-            display: none;
-            width: 40px;
-            height: 40px;
-            border: 3px solid #30363d;
-            border-radius: 50%;
-            border-top-color: var(--accent);
-            animation: spin 1s linear infinite;
-            margin: 20px;
-        }
-
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        .games-grid {
+        .game-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
             gap: 20px;
-            width: 100%;
-            max-width: 1100px;
+            margin-top: 20px;
         }
 
         .game-card {
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 12px;
+            background: var(--card);
+            border-radius: 15px;
             overflow: hidden;
             transition: transform 0.2s;
+            border: 1px solid #334155;
+            text-align: left;
         }
 
-        .game-card:hover { transform: translateY(-5px); }
+        .game-card:hover { transform: translateY(-5px); border-color: var(--accent); }
 
-        .thumbnail {
+        .game-thumb {
             width: 100%;
             aspect-ratio: 16/9;
             background: #000;
             object-fit: cover;
         }
 
-        .game-info { padding: 16px; }
-        .game-name { font-weight: 700; font-size: 1.1rem; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .game-stats { font-size: 0.85rem; color: var(--text-dim); display: flex; gap: 15px; }
-        
-        .play-link {
+        .game-content { padding: 15px; }
+        .game-name { font-weight: 700; font-size: 1.1rem; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .game-stats { font-size: 0.85rem; color: var(--text-dim); }
+
+        .btn-view {
             display: inline-block;
             margin-top: 15px;
             color: var(--accent);
             text-decoration: none;
+            font-weight: 700;
             font-size: 0.9rem;
-            font-weight: 600;
         }
-
-        .play-link:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <h1>Player Game Finder</h1>
-        <p>Enter a Roblox Username or User ID</p>
-    </div>
+    <div class="container">
+        <h1>Game Finder</h1>
+        <p>Enter a Roblox Username (e.g. Builderman) or a User ID (e.g. 1)</p>
 
-    <div class="search-container">
-        <input type="text" id="userInput" placeholder="e.g. Builderman or 156" spellcheck="false">
-        <button id="searchBtn" onclick="handleSearch()">Search</button>
-    </div>
+        <div class="search-bar">
+            <input type="text" id="targetInput" placeholder="Username or User ID..." spellcheck="false">
+            <button id="searchBtn" onclick="startSearch()">View Games</button>
+        </div>
 
-    <div id="errorBox" class="error"></div>
-    <div id="loader" class="loader"></div>
-    <div id="gamesGrid" class="games-grid"></div>
+        <div id="status"></div>
+        <div id="gameGrid" class="game-grid"></div>
+    </div>
 
     <script>
-        const userInput = document.getElementById('userInput');
-        const searchBtn = document.getElementById('searchBtn');
-        const gamesGrid = document.getElementById('gamesGrid');
-        const errorBox = document.getElementById('errorBox');
-        const loader = document.getElementById('loader');
+        const statusDiv = document.getElementById('status');
+        const grid = document.getElementById('gameGrid');
+        const btn = document.getElementById('searchBtn');
 
-        async function handleSearch() {
-            const query = userInput.value.trim();
-            if (!query) return;
+        async function startSearch() {
+            const input = document.getElementById('targetInput').value.trim();
+            if (!input) return;
 
             // Reset UI
-            gamesGrid.innerHTML = '';
-            errorBox.style.display = 'none';
-            loader.style.display = 'block';
-            searchBtn.disabled = true;
+            grid.innerHTML = '';
+            statusDiv.className = 'loading';
+            statusDiv.innerText = 'Searching for user...';
+            btn.disabled = true;
 
             try {
-                let userId = query;
+                let userId = input;
 
-                // If input contains letters, it's a username. We need to find the ID.
-                if (isNaN(query)) {
-                    // Using Search API (GET) which is better for RoProxy CORS than the POST Usernames API
-                    const searchUrl = `https://users.roproxy.com/v1/users/search?keyword=${encodeURIComponent(query)}&limit=1`;
-                    const userRes = await fetch(searchUrl);
-                    const userData = await userRes.json();
+                // Step 1: If input is NOT a number, convert Username to ID
+                if (isNaN(input)) {
+                    // We use the search endpoint to find the user ID from the name
+                    const userLookup = await fetch(`https://users.roproxy.com/v1/users/search?keyword=${input}&limit=1`);
+                    const userData = await userLookup.json();
 
                     if (!userData.data || userData.data.length === 0) {
-                        throw new Error("User not found.");
+                        throw new Error("User not found. Try a User ID instead.");
                     }
+                    
                     userId = userData.data[0].id;
+                    statusDiv.innerText = `Found User ID: ${userId}. Fetching games...`;
                 }
 
-                // Fetch Games
-                const gamesUrl = `https://games.roproxy.com/v2/users/${userId}/games?sortOrder=Asc&limit=50`;
+                // Step 2: Fetch Games using the numeric ID
+                // We use accessFilter=2 to ensure we get Public games
+                const gamesUrl = `https://games.roproxy.com/v2/users/${userId}/games?accessFilter=2&sortOrder=Asc&limit=50`;
                 const gamesRes = await fetch(gamesUrl);
                 const gamesData = await gamesRes.json();
 
                 if (!gamesData.data || gamesData.data.length === 0) {
-                    throw new Error("This user has no public games.");
+                    throw new Error("No public games found for this user.");
                 }
 
-                renderGames(gamesData.data);
+                // Step 3: Get Thumbnails for the games
+                const universeIds = gamesData.data.map(g => g.id).join(',');
+                const thumbRes = await fetch(`https://thumbnails.roproxy.com/v1/games/icons?universeIds=${universeIds}&size=150x150&format=Png&isCircular=false`);
+                const thumbData = await thumbRes.json();
+                const thumbMap = {};
+                if (thumbData.data) {
+                    thumbData.data.forEach(t => thumbMap[t.targetId] = t.imageUrl);
+                }
+
+                // Step 4: Render
+                statusDiv.innerText = `Showing ${gamesData.data.length} games`;
+                statusDiv.className = '';
+                
+                gamesData.data.forEach(game => {
+                    const icon = thumbMap[game.id] || 'https://tr.rbxcdn.com/53ebcb10178495a43064e43f32617f65/150/150/Image/Png';
+                    const card = document.createElement('div');
+                    card.className = 'game-card';
+                    card.innerHTML = `
+                        <img src="${icon}" class="game-thumb">
+                        <div class="game-content">
+                            <div class="game-name">${game.name}</div>
+                            <div class="game-stats">
+                                👥 ${game.placeVisits.toLocaleString()} Visits<br>
+                                ⭐ ${game.favoritedCount || 0} Favorites
+                            </div>
+                            <a href="https://www.roblox.com/games/${game.rootPlace.id}" target="_blank" class="btn-view">View on Roblox →</a>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
 
             } catch (err) {
-                errorBox.innerText = err.message;
-                errorBox.style.display = 'block';
+                statusDiv.className = 'error';
+                statusDiv.innerText = err.message;
             } finally {
-                loader.style.display = 'none';
-                searchBtn.disabled = false;
+                btn.disabled = false;
             }
         }
 
-        async function renderGames(games) {
-            // Get thumbnails in a batch for better performance
-            const universeIds = games.map(g => g.id).join(',');
-            let thumbs = {};
-            
-            try {
-                const thumbRes = await fetch(`https://thumbnails.roproxy.com/v1/games/icons?universeIds=${universeIds}&size=150x150&format=Png&isCircular=false`);
-                const thumbData = await thumbRes.json();
-                thumbData.data.forEach(t => thumbs[t.targetId] = t.imageUrl);
-            } catch (e) { console.log("Thumbnail fetch failed"); }
-
-            games.forEach(game => {
-                const card = document.createElement('div');
-                card.className = 'game-card';
-                
-                const thumbImg = thumbs[game.id] || 'https://tr.rbxcdn.com/53ebcb10178495a43064e43f32617f65/150/150/Image/Png';
-
-                card.innerHTML = `
-                    <img src="${thumbImg}" class="thumbnail" alt="Game Icon">
-                    <div class="game-info">
-                        <div class="game-name">${game.name}</div>
-                        <div class="game-stats">
-                            <span>👍 ${game.totalUpVotes || 0}</span>
-                            <span>👥 ${game.placeVisits.toLocaleString()} visits</span>
-                        </div>
-                        <a href="https://www.roblox.com/games/${game.rootPlace.id}" target="_blank" class="play-link">View Game →</a>
-                    </div>
-                `;
-                gamesGrid.appendChild(card);
-            });
-        }
-
-        // Listen for Enter key
-        userInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') handleSearch();
+        // Allow pressing Enter to search
+        document.getElementById('targetInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') startSearch();
         });
     </script>
 </body>
