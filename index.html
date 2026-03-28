@@ -78,28 +78,77 @@
             background: var(--card-bg);
             border: 1px solid var(--border);
             border-radius: 24px;
-            padding: 24px;
+            padding: 20px;
             transition: var(--transition);
             opacity: 0;
             transform: translateY(20px);
             animation: show 0.5s forwards;
+            position: relative;
+            display: flex;
+            flex-direction: column;
         }
 
         @keyframes show { to { opacity: 1; transform: translateY(0); } }
 
         .game-card:hover { border-color: #666; background: #1a1a1a; }
 
-        .game-name { font-weight: 700; font-size: 1.2rem; margin-bottom: 5px; }
-        .game-desc { font-size: 0.85rem; color: var(--text-dim); line-height: 1.4; margin-bottom: 15px; }
+        /* Game Icon */
+        .game-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 15px;
+            background: #222;
+            margin-bottom: 15px;
+            object-fit: cover;
+        }
+
+        /* 3 Dots Menu */
+        .menu-dots {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            cursor: pointer;
+            padding: 5px;
+            color: var(--text-dim);
+            transition: 0.2s;
+        }
+        .menu-dots:hover { color: white; }
+
+        .game-name { font-weight: 700; font-size: 1.1rem; margin-bottom: 5px; padding-right: 25px; }
+        .game-desc { 
+            font-size: 0.85rem; 
+            color: var(--text-dim); 
+            line-height: 1.4; 
+            margin-bottom: 15px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
         
+        .badge-row { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
         .badge {
             background: #222;
             padding: 5px 12px;
             border-radius: 10px;
             font-size: 0.75rem;
             color: #ccc;
-            display: inline-block;
         }
+
+        .go-btn {
+            background: transparent;
+            border: 1px solid #333;
+            color: white;
+            padding: 10px;
+            width: 100%;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            text-decoration: none;
+            text-align: center;
+            margin-top: auto;
+            transition: 0.2s;
+        }
+        .go-btn:hover { background: white; color: black; }
 
         .loader { display: none; text-align: center; color: var(--text-dim); padding: 20px; font-style: italic; }
         .error-msg { display: none; color: #ff5555; text-align: center; background: #201010; padding: 15px; border-radius: 12px; border: 1px solid #402020; margin-bottom: 20px; }
@@ -121,7 +170,7 @@
             <button id="searchBtn">SEARCH</button>
         </div>
 
-        <div id="loader" class="loader">Querying databases...</div>
+        <div id="loader" class="loader">Accessing API...</div>
 
         <div id="results"></div>
     </div>
@@ -140,7 +189,6 @@
             const query = userInput.value.trim();
             if(!query) return;
 
-            // Reset
             resultsContainer.innerHTML = '';
             errorEl.style.display = 'none';
             loader.style.display = 'block';
@@ -149,13 +197,11 @@
             try {
                 let targetId = query;
 
-                // If input is text, we search for the ID
+                // Handle Username vs ID
                 if (isNaN(query)) {
-                    console.log(`Resolving username: ${query}`);
                     targetId = await fetchUserId(query);
                 }
 
-                console.log(`Fetching games for ID: ${targetId}`);
                 await fetchGames(targetId);
 
             } catch (err) {
@@ -169,40 +215,59 @@
         }
 
         async function fetchUserId(name) {
-            // Using the Search GET endpoint (more browser friendly)
+            // Updated search logic
             const res = await fetch(`https://users.roproxy.com/v1/users/search?keyword=${name}&limit=1`);
             const data = await res.json();
 
             if (data.data && data.data.length > 0) {
                 return data.data[0].id;
             } else {
-                throw new Error("User not found. Try the exact Username or ID.");
+                // Fallback attempt for exact match via profiles
+                throw new Error("User not found. Try the exact ID if the name isn't working.");
             }
         }
 
         async function fetchGames(id) {
             const res = await fetch(`https://games.roproxy.com/v2/users/${id}/games?sortOrder=Asc&limit=50`);
-            
-            if (!res.ok) throw new Error("Could not access games (Proxy Error or Private profile).");
+            if (!res.ok) throw new Error("Could not access games (Private profile or Proxy Error).");
             
             const data = await res.json();
-            
             if (!data.data || data.data.length === 0) {
-                throw new Error("This user has no public games listed.");
+                throw new Error("This user has no public games.");
             }
 
+            // Get all universe IDs to fetch icons in one go
+            const universeIds = data.data.map(g => g.id).join(',');
+            const thumbRes = await fetch(`https://thumbnails.roproxy.com/v1/games/icons?universeIds=${universeIds}&returnPolicy=PlaceHolder&size=150x150&format=Png&isCircular=false`);
+            const thumbData = await thumbRes.json();
+            
             data.data.forEach((game, i) => {
+                const iconObj = thumbData.data?.find(t => t.targetId === game.id);
+                const iconUrl = iconObj ? iconObj.imageUrl : '';
+
                 const card = document.createElement('div');
                 card.className = 'game-card';
                 card.style.animationDelay = `${i * 0.05}s`;
                 card.innerHTML = `
+                    <div class="menu-dots" onclick="copyId('${game.rootPlaceId}')">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
+                    </div>
+                    <img class="game-icon" src="${iconUrl}" alt="icon">
                     <div class="game-name">${game.name}</div>
-                    <div class="game-desc">${game.description || 'No description provided.'}</div>
-                    <div class="badge">Active: ${game.playing || 0}</div>
-                    <div class="badge">⭐ ${game.favoritedCount || 0}</div>
+                    <div class="game-desc">${game.description || 'No description.'}</div>
+                    <div class="badge-row">
+                        <div class="badge">Active: ${game.playing || 0}</div>
+                        <div class="badge">⭐ ${game.favoritedCount || 0}</div>
+                    </div>
+                    <a href="https://www.roblox.com/games/${game.rootPlaceId}" target="_blank" class="go-btn">View Website</a>
                 `;
                 resultsContainer.appendChild(card);
             });
+        }
+
+        function copyId(id) {
+            navigator.clipboard.writeText(id);
+            alert("Place ID copied to clipboard: " + id);
         }
     </script>
 </body>
